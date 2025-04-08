@@ -1,122 +1,10 @@
 #![warn(clippy::pedantic)]
 
-mod entries {
-    use crate::{Result, error};
+#[cfg(not(target_family = "unix"))]
+compile_error!("This crate is only compatible with Unix targets");
 
-    fn data_path() -> Result<&'static std::path::PathBuf> {
-        static PATH: std::sync::OnceLock<Option<std::path::PathBuf>> = std::sync::OnceLock::new();
-        PATH.get_or_init(|| {
-            dirs::data_local_dir().map(|p| p.join(env!("CARGO_PKG_NAME")).join("entries"))
-        })
-        .as_ref()
-        .ok_or(error::Error::DataPath)
-    }
-
-    pub struct Entry {
-        score: u64,
-        path: std::ffi::OsString,
-    }
-
-    impl Entry {
-        fn from_bytes(bytes: &[u8]) {
-            // if bytes.len() > std::mem::size_of::<u64>() + std::mem::size_of::<u8>() {
-            //     let mut score = [u8; std::mem::size_of::<u64>()];
-            // }
-            todo!()
-        }
-    }
-
-    pub struct Access(std::path::PathBuf);
-
-    impl Access {
-        pub fn register(self) -> Result {
-            // let path = data_path()?;
-            // let bytes = {
-            //     let mut file = std::fs::OpenOptions::new()
-            //         .read(true)
-            //         .write(true)
-            //         .create(true)
-            //         .open(path)?;
-            //
-            //     fs2::FileExt::lock_exclusive(&file);
-            //
-            //     let size = file.metadata().map(|m| m.len() as usize).ok();
-            //     let mut bytes = Vec::new();
-            //     bytes.try_reserve_exact(size.unwrap_or(0))?;
-            //     std::io::Read::read_to_end(&mut file, &mut bytes);
-            //     bytes
-            // };
-            todo!()
-        }
-    }
-
-    impl TryFrom<String> for Access {
-        type Error = error::Error;
-
-        fn try_from(value: String) -> Result<Self> {
-            let path = std::path::PathBuf::from(value);
-
-            let path = path
-                .canonicalize()
-                .map_err(|_| error::Args::InvalidPath(path))?;
-
-            if path.is_dir() {
-                Ok(Self(path))
-            } else {
-                Err(error::Error::Args(error::Args::InvalidPath(path)))
-            }
-        }
-    }
-
-    pub struct Entries(Vec<u8>);
-
-    impl Entries {
-        pub fn new() -> Result<Self> {
-            let path = data_path()?;
-            let bytes = {
-                let mut file = std::fs::OpenOptions::new().read(true).open(path)?;
-
-                fs2::FileExt::lock_shared(&file);
-
-                let size = file.metadata().map(|m| m.len() as usize).ok();
-                let mut bytes = Vec::new();
-                bytes.try_reserve_exact(size.unwrap_or(0))?;
-                std::io::Read::read_to_end(&mut file, &mut bytes);
-                bytes
-            };
-
-            Ok(Self(bytes))
-        }
-    }
-}
-
-mod error {
-    #[derive(Debug, thiserror::Error)]
-    pub enum Error {
-        #[error(transparent)]
-        Args(#[from] Args),
-        #[error("Could not establish data dir")]
-        DataPath,
-        #[error("Failed to access data: {0}")]
-        Io(#[from] std::io::Error),
-        #[error("Failed to allocate: {0}")]
-        Allocation(#[from] std::collections::TryReserveError),
-    }
-
-    #[derive(Debug, thiserror::Error)]
-    pub enum Args {
-        #[error("No action provided")]
-        NoAction,
-        #[error("Unknown action provided: `{0}`")]
-        UnknownAction(String),
-        #[error("No query provided")]
-        NoQuery,
-        #[error("No path provided")]
-        NoPath,
-        #[error("Invalid path: {0:?}")]
-        InvalidPath(std::path::PathBuf),
-    }
-}
+mod entries;
+mod error;
 
 type Result<T = ()> = std::result::Result<T, error::Error>;
 
@@ -140,14 +28,14 @@ fn main() -> std::process::ExitCode {
 }
 
 fn fallible_main() -> Result {
-    let mut args = std::env::args().skip(1);
+    let mut args = std::env::args_os().skip(1);
 
     let action = args.next().ok_or(error::Args::NoAction)?;
 
-    match action.as_str() {
-        "q" => query(args),
-        "a" => access(args),
-        "h" => {
+    match action.as_encoded_bytes() {
+        b"q" => query(args),
+        b"a" => access(args),
+        b"h" => {
             let _ = show_help(std::io::stdout().lock());
             Ok(())
         }
