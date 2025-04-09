@@ -3,7 +3,11 @@ name = "zali"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+check_on_load = []
+
 [dependencies]
+bincode = "2.0.1"
 dirs = "6.0.0"
 fs2 = "0.4.3"
 thiserror = "2.0.12"

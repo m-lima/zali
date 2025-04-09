@@ -28,14 +28,14 @@ fn main() -> std::process::ExitCode {
 }
 
 fn fallible_main() -> Result {
-    let mut args = std::env::args_os().skip(1);
+    let mut args = std::env::args().skip(1);
 
     let action = args.next().ok_or(error::Args::NoAction)?;
 
-    match action.as_encoded_bytes() {
-        b"q" => query(args),
-        b"a" => access(args),
-        b"h" => {
+    match action.as_str() {
+        "q" => query(args),
+        "a" => access(args),
+        "h" => {
             let _ = show_help(std::io::stdout().lock());
             Ok(())
         }
@@ -61,8 +61,7 @@ fn access<A: Iterator<Item = String>>(mut args: A) -> Result {
         .next()
         .ok_or(error::Error::Args(error::Args::NoPath))
         .and_then(entries::Access::try_from)?;
-
-    Ok(())
+    entries::Entries::write(access)
 }
 
 fn show_help<W: std::io::Write>(mut writer: W) -> std::io::Result<()> {
