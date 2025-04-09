@@ -28,9 +28,11 @@ pub enum Access {
 pub enum Data {
     #[error("Failed to resolve data dir")]
     Resolve,
-    #[error("Failed to open entries")]
+    #[error("Failed to open entries: {0}")]
     Open(std::io::Error),
-    #[error("Failed to acquire file lock")]
+    #[error("Failed to write entries: {0}")]
+    Write(std::io::Error),
+    #[error("Failed to acquire file lock: {0}")]
     Lock(std::io::Error),
     #[error("Failed to initialize data dir: {0}")]
     Init(std::io::Error),

@@ -7,16 +7,19 @@ pub fn access(path: String) -> Result {
     let access = entry::Access::try_from(path)?;
     let access = entry::Entry::new(access, now);
 
-    let data = data::Data::<true>::new()?;
+    let data = data::Writer::new()?;
 
-    let mut entries =
-        bincode::decode_from_std_read::<Vec<entry::Entry>, _, _>(&mut data.reader(), entry::CONFIG)
+    let (data, mut entries) = data.read(|mut r| {
+        bincode::decode_from_std_read::<Vec<entry::Entry>, _, _>(&mut r, entry::CONFIG)
             .ok()
-            .unwrap_or_else(Vec::new);
+            .unwrap_or_else(Vec::new)
+    });
     eprintln!("Loaded   {entries:?}");
 
     entries.retain(|e| e.days_since(now) < 365);
     eprintln!("Retained {entries:?}");
+
+    std::thread::sleep(std::time::Duration::from_secs(10));
 
     // #[cfg(feature = "check_on_load")]
     {
@@ -32,8 +35,9 @@ pub fn access(path: String) -> Result {
     }
     eprintln!("Pushed   {entries:?}");
 
-    bincode::encode_into_std_write(entries, &mut data.writer(), entry::CONFIG)
-        .map_err(error::Entry::Encode)?;
+    data.write(|mut w| {
+        bincode::encode_into_std_write(entries, &mut w, entry::CONFIG).map_err(error::Entry::Encode)
+    })??;
 
     Ok(())
 }
