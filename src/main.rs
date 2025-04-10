@@ -4,7 +4,6 @@
 compile_error!("This crate is only compatible with Unix targets");
 
 mod action;
-mod data;
 mod entry;
 mod error;
 
@@ -37,7 +36,7 @@ fn fallible_main() -> Result {
     match action.as_str() {
         "q" => {
             let query = args.next().ok_or(error::Args::Missing)?;
-            todo!("action::query(args)")
+            action::query(query)?;
         }
         "a" => {
             let path = args.next().ok_or(error::Args::Missing)?;
