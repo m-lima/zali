@@ -6,6 +6,10 @@ pub type Result<T = ()> = std::result::Result<T, Error>;
 pub enum Error {
     #[error("No matches")]
     NoMatches,
+    #[error("Error executing fzf: {0}")]
+    Fzf(std::io::Error),
+    #[error("Could not communicate with fzf: {0}")]
+    Pipe(std::io::Error),
     #[error("Could not write to stdout: {0}")]
     Stdout(std::io::Error),
     #[error(transparent)]
@@ -35,14 +39,33 @@ pub fn query<S: AsRef<str>>(query: S) -> Result {
             Ok(())
         }
         _ => {
-            let mut stdout = std::io::stdout().lock();
             scores.sort_unstable_by(|a, b| match b.0.cmp(&a.0) {
                 std::cmp::Ordering::Equal => b.1.cmp(&a.1),
                 c => c,
             });
+
+            let mut fzf = pwner::Spawner::spawn_owned(&mut std::process::Command::new("fzf"))
+                .map_err(Error::Fzf)?;
+
             for s in scores {
-                use std::io::Write;
-                writeln!(stdout, "{} {}", s.0, s.2).map_err(Error::Stdout)?;
+                std::io::Write::write_all(&mut fzf, s.2.as_bytes()).map_err(Error::Pipe)?;
+                std::io::Write::write(&mut fzf, b"\n").map_err(Error::Pipe)?;
+            }
+
+            let (status, mut fzf_out, _) = fzf.wait().map_err(Error::Fzf)?;
+            if status.success() {
+                let mut stdout = std::io::stdout().lock();
+                let mut buffer = [0; 1024];
+                loop {
+                    let bytes =
+                        std::io::Read::read(&mut fzf_out, &mut buffer).map_err(Error::Pipe)?;
+
+                    if bytes == 0 {
+                        break;
+                    }
+
+                    std::io::Write::write(&mut stdout, &buffer[..bytes]).map_err(Error::Stdout)?;
+                }
             }
             Ok(())
         }
