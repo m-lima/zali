@@ -1,6 +1,6 @@
 mod access;
 mod help;
-mod query;
+pub mod query;
 
 pub use access::access;
 pub use help::help;

@@ -7,6 +7,16 @@ pub struct Entry {
 }
 
 impl Entry {
+    pub fn path(&self) -> &std::path::Path {
+        &self.path
+    }
+
+    pub fn last_visit_secs(&self) -> u64 {
+        self.last_visit
+    }
+}
+
+impl Entry {
     pub(super) fn new(access: Access, last_visit: LastVisit) -> Self {
         Self {
             path: access.0,

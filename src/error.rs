@@ -3,7 +3,9 @@ pub enum Error {
     #[error(transparent)]
     Args(#[from] Args),
     #[error(transparent)]
-    Access(#[from] crate::entry::Error),
+    Entry(#[from] crate::entry::Error),
+    #[error(transparent)]
+    Query(#[from] crate::action::query::Error),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -15,11 +17,3 @@ pub enum Args {
     #[error("Missing expected argument")]
     Missing,
 }
-
-// #[derive(Debug, thiserror::Error)]
-// pub enum Access {
-//     #[error(transparent)]
-//     Data(#[from] Data),
-//     #[error(transparent)]
-//     Entry(#[from] Entry),
-// }
