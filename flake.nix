@@ -1,7 +1,13 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     crane.url = "github:ipetkov/crane";
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+      };
+    };
     flake-utils.url = "github:numtide/flake-utils";
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
@@ -9,13 +15,15 @@
         nixpkgs.follows = "nixpkgs";
       };
     };
-    rust-helper.url = "github:m-lima/nix-template";
+    helper.url = "github:m-lima/nix-template";
   };
 
   outputs =
     {
-      rust-helper,
+      self,
+      flake-utils,
+      helper,
       ...
     }@inputs:
-    rust-helper.lib.rust.helper inputs { } ./. "zali";
+    flake-utils.lib.eachDefaultSystem (system: (helper.lib.rust.helper inputs system ./. { }).outputs);
 }
